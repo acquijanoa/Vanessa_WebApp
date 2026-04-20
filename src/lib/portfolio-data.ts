@@ -16,6 +16,7 @@ type Store = { items: PortfolioItem[] };
 type LegacyItem = PortfolioItem & { imageUrl?: string };
 
 function normalizeItem(raw: LegacyItem): PortfolioItem {
+  const sortOrder = typeof raw.sortOrder === "number" && Number.isFinite(raw.sortOrder) ? raw.sortOrder : 0;
   if (Array.isArray(raw.imageUrls) && raw.imageUrls.length > 0) {
     return {
       id: raw.id,
@@ -23,6 +24,7 @@ function normalizeItem(raw: LegacyItem): PortfolioItem {
       title: raw.title,
       description: raw.description,
       imageUrls: raw.imageUrls,
+      sortOrder,
       createdAt: raw.createdAt,
     };
   }
@@ -33,6 +35,7 @@ function normalizeItem(raw: LegacyItem): PortfolioItem {
       title: raw.title,
       description: raw.description,
       imageUrls: [raw.imageUrl],
+      sortOrder,
       createdAt: raw.createdAt,
     };
   }
@@ -42,6 +45,7 @@ function normalizeItem(raw: LegacyItem): PortfolioItem {
     title: raw.title,
     description: raw.description,
     imageUrls: [],
+    sortOrder,
     createdAt: raw.createdAt,
   };
 }
@@ -122,6 +126,7 @@ type PortfolioRow = {
   description: string | null;
   media_url: string | null;
   image_urls?: string[] | null;
+  sort_order?: number | null;
   created_at: string;
 };
 
@@ -138,12 +143,13 @@ function mapRowToItem(row: PortfolioRow): PortfolioItem {
     title: row.title ?? "",
     description: row.description ?? "",
     imageUrls: urls,
+    sortOrder: row.sort_order ?? 0,
     createdAt: row.created_at,
   };
 }
 
 const PORTFOLIO_SELECT_WITH_GALLERY =
-  "id, category, title, description, media_url, image_urls, created_at";
+  "id, category, title, description, media_url, image_urls, sort_order, created_at";
 const PORTFOLIO_SELECT_LEGACY = "id, category, title, description, media_url, created_at";
 
 export async function getPortfolioItems(options?: {
@@ -156,7 +162,7 @@ export async function getPortfolioItems(options?: {
       if (!options?.includeUnpublished) {
         q = q.eq("published", true);
       }
-      return q.order("created_at", { ascending: false });
+      return q.order("sort_order", { ascending: true }).order("created_at", { ascending: false });
     };
 
     let res = await runSelect(PORTFOLIO_SELECT_WITH_GALLERY);
@@ -176,9 +182,22 @@ export async function getPortfolioItems(options?: {
   }
 
   const { items } = await readStore();
-  return [...items].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  );
+  return [...items].sort((a, b) => {
+    const d = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+    if (d !== 0) {
+      return d;
+    }
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
+async function nextSortOrderForNewItem(): Promise<number> {
+  const list = await getPortfolioItems({ includeUnpublished: true });
+  if (list.length === 0) {
+    return 0;
+  }
+  const min = list.reduce((m, i) => Math.min(m, i.sortOrder ?? 0), 0);
+  return min - 1;
 }
 
 export async function addPortfolioItem(input: {
@@ -210,6 +229,8 @@ export async function addPortfolioItem(input: {
 
   assertFsPortfolioAllowed();
 
+  const sortOrder = await nextSortOrderForNewItem();
+
   const imageUrls: string[] = [];
   for (let i = 0; i < input.images.length; i++) {
     const img = input.images[i]!;
@@ -228,11 +249,12 @@ export async function addPortfolioItem(input: {
     title: input.title.trim(),
     description: input.description.trim(),
     imageUrls,
+    sortOrder,
     createdAt: new Date().toISOString(),
   };
 
   const store = await readStore();
-  store.items.unshift(item);
+  store.items.push(item);
   await writeStore(store);
   return item;
 }
@@ -248,6 +270,7 @@ async function addPortfolioItemSupabase(
 ): Promise<PortfolioItem> {
   const supabase = createServerClient()!;
   const uploadedPaths: string[] = [];
+  const sortOrder = await nextSortOrderForNewItem();
 
   const imageUrls: string[] = [];
   try {
@@ -289,7 +312,7 @@ async function addPortfolioItemSupabase(
         media_url: imageUrls[0],
         image_urls: imageUrls,
         published: true,
-        sort_order: 0,
+        sort_order: sortOrder,
       })
       .select("created_at")
       .single();
@@ -328,6 +351,7 @@ async function addPortfolioItemSupabase(
       title: input.title.trim(),
       description: input.description.trim(),
       imageUrls,
+      sortOrder,
       createdAt: inserted.created_at,
     };
   } catch (e) {
@@ -336,6 +360,314 @@ async function addPortfolioItemSupabase(
     }
     throw e;
   }
+}
+
+async function deleteFsPortfolioFiles(urls: string[]): Promise<void> {
+  for (const url of urls) {
+    const rel = url.replace(/^\//, "");
+    const filePath = path.join(process.cwd(), "public", rel);
+    await fs.unlink(filePath).catch(() => {});
+  }
+}
+
+async function deleteSupabaseStorageFiles(urls: string[]): Promise<void> {
+  if (!urls.length) {
+    return;
+  }
+  const supabase = createServerClient()!;
+  const paths = urls
+    .map((u) => extractStorageObjectPath(u))
+    .filter((p): p is string => p != null && p.length > 0);
+  if (paths.length) {
+    await supabase.storage.from(STORAGE_BUCKET).remove(paths).catch(() => {});
+  }
+}
+
+export async function updatePortfolioItem(
+  id: string,
+  input: {
+    title?: string;
+    description?: string;
+    category?: PortfolioCategory;
+    sortOrder?: number;
+    imageUrls?: string[];
+  },
+): Promise<PortfolioItem | null> {
+  if (useSupabase()) {
+    const supabase = createServerClient()!;
+    const { data: row, error: fetchError } = await supabase
+      .from("portfolio_items")
+      .select("media_url, image_urls, category, title, description, sort_order, created_at")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (fetchError || !row) {
+      return null;
+    }
+
+    const prevUrls: string[] =
+      row.image_urls && row.image_urls.length > 0
+        ? row.image_urls
+        : row.media_url
+          ? [row.media_url]
+          : [];
+    const prevSet = new Set(prevUrls);
+
+    let nextUrls = prevUrls;
+    if (input.imageUrls !== undefined) {
+      for (const u of input.imageUrls) {
+        if (!prevSet.has(u)) {
+          throw new Error("Solo puedes reordenar o quitar imágenes existentes; usa «Añadir imágenes» para subir nuevas.");
+        }
+      }
+      const removed = prevUrls.filter((u) => !input.imageUrls!.includes(u));
+      nextUrls = [...input.imageUrls];
+      if (removed.length) {
+        await deleteSupabaseStorageFiles(removed);
+      }
+      if (nextUrls.length === 0) {
+        throw new Error("Debe quedar al menos una imagen.");
+      }
+    }
+
+    const patch: Record<string, unknown> = {};
+    if (input.title !== undefined) {
+      patch.title = input.title.trim();
+    }
+    if (input.description !== undefined) {
+      patch.description = input.description.trim();
+    }
+    if (input.category !== undefined) {
+      patch.category = input.category;
+    }
+    if (input.sortOrder !== undefined) {
+      patch.sort_order = input.sortOrder;
+    }
+    if (input.imageUrls !== undefined) {
+      patch.image_urls = nextUrls;
+      patch.media_url = nextUrls[0] ?? null;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      const { data: again } = await supabase
+        .from("portfolio_items")
+        .select(PORTFOLIO_SELECT_WITH_GALLERY)
+        .eq("id", id)
+        .maybeSingle();
+      return again ? mapRowToItem(again as PortfolioRow) : null;
+    }
+
+    const { data: updated, error: upError } = await supabase
+      .from("portfolio_items")
+      .update(patch)
+      .eq("id", id)
+      .select(PORTFOLIO_SELECT_WITH_GALLERY)
+      .maybeSingle();
+
+    if (upError || !updated) {
+      console.error(upError);
+      throw new Error("No se pudo actualizar la entrada.");
+    }
+    return mapRowToItem(updated as PortfolioRow);
+  }
+
+  assertFsPortfolioAllowed();
+  const store = await readStore();
+  const idx = store.items.findIndex((i) => i.id === id);
+  if (idx === -1) {
+    return null;
+  }
+  const item = store.items[idx]!;
+  const prevUrls = [...item.imageUrls];
+  const prevSet = new Set(prevUrls);
+
+  let nextUrls = prevUrls;
+  if (input.imageUrls !== undefined) {
+    for (const u of input.imageUrls) {
+      if (!prevSet.has(u)) {
+        throw new Error("Solo puedes reordenar o quitar imágenes existentes; usa «Añadir imágenes» para subir nuevas.");
+      }
+    }
+    const removed = prevUrls.filter((u) => !input.imageUrls!.includes(u));
+    nextUrls = [...input.imageUrls];
+    if (removed.length) {
+      await deleteFsPortfolioFiles(removed);
+    }
+    if (nextUrls.length === 0) {
+      throw new Error("Debe quedar al menos una imagen.");
+    }
+  }
+
+  const next: PortfolioItem = {
+    ...item,
+    title: input.title !== undefined ? input.title.trim() : item.title,
+    description: input.description !== undefined ? input.description.trim() : item.description,
+    category: input.category !== undefined ? input.category : item.category,
+    sortOrder: input.sortOrder !== undefined ? input.sortOrder : item.sortOrder,
+    imageUrls: input.imageUrls !== undefined ? nextUrls : item.imageUrls,
+  };
+
+  store.items[idx] = next;
+  await writeStore(store);
+  return next;
+}
+
+export async function appendPortfolioItemImages(
+  id: string,
+  images: { buffer: Buffer; mimeType: string }[],
+): Promise<PortfolioItem | null> {
+  if (!images.length) {
+    throw new Error("Selecciona al menos una imagen.");
+  }
+
+  for (const img of images) {
+    if (img.buffer.length > MAX_BYTES_PER_FILE) {
+      throw new Error("Cada imagen debe ser de 12 MB o menos.");
+    }
+    if (!mimeToExt(img.mimeType)) {
+      throw new Error("Tipo de imagen no permitido (usa JPG, PNG, WebP o GIF).");
+    }
+  }
+
+  if (useSupabase()) {
+    const supabase = createServerClient()!;
+    const { data: row, error: fetchError } = await supabase
+      .from("portfolio_items")
+      .select("media_url, image_urls")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (fetchError || !row) {
+      return null;
+    }
+
+    const prevUrls: string[] =
+      row.image_urls && row.image_urls.length > 0
+        ? row.image_urls
+        : row.media_url
+          ? [row.media_url]
+          : [];
+
+    if (prevUrls.length + images.length > MAX_IMAGES_PER_ITEM) {
+      throw new Error(`Máximo ${MAX_IMAGES_PER_ITEM} imágenes por trabajo.`);
+    }
+
+    const uploadedPaths: string[] = [];
+    const newUrls: string[] = [];
+    try {
+      for (const img of images) {
+        const ext = mimeToExt(img.mimeType)!;
+        const objectPath = `items/${id}/${randomUUID()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .upload(objectPath, img.buffer, {
+            contentType: img.mimeType,
+            upsert: false,
+          });
+        if (uploadError) {
+          console.error(uploadError);
+          throw new Error("No se pudo subir una imagen.");
+        }
+        uploadedPaths.push(objectPath);
+        const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(objectPath);
+        newUrls.push(pub.publicUrl);
+      }
+
+      const merged = [...prevUrls, ...newUrls];
+      const { data: updated, error: upError } = await supabase
+        .from("portfolio_items")
+        .update({
+          image_urls: merged,
+          media_url: merged[0] ?? null,
+        })
+        .eq("id", id)
+        .select(PORTFOLIO_SELECT_WITH_GALLERY)
+        .maybeSingle();
+
+      if (upError || !updated) {
+        await supabase.storage.from(STORAGE_BUCKET).remove(uploadedPaths).catch(() => {});
+        console.error(upError);
+        throw new Error("No se pudo guardar las imágenes.");
+      }
+      return mapRowToItem(updated as PortfolioRow);
+    } catch (e) {
+      if (uploadedPaths.length) {
+        await supabase.storage.from(STORAGE_BUCKET).remove(uploadedPaths).catch(() => {});
+      }
+      throw e;
+    }
+  }
+
+  assertFsPortfolioAllowed();
+  const store = await readStore();
+  const idx = store.items.findIndex((i) => i.id === id);
+  if (idx === -1) {
+    return null;
+  }
+  const item = store.items[idx]!;
+  if (item.imageUrls.length + images.length > MAX_IMAGES_PER_ITEM) {
+    throw new Error(`Máximo ${MAX_IMAGES_PER_ITEM} imágenes por trabajo.`);
+  }
+
+  const newUrls: string[] = [];
+  for (const img of images) {
+    const ext = mimeToExt(img.mimeType)!;
+    const filename = `${id}-${randomUUID()}.${ext}`;
+    const publicPath = `/uploads/portfolio/${filename}`;
+    const filePath = path.join(UPLOAD_DIR, filename);
+    await fs.mkdir(UPLOAD_DIR, { recursive: true });
+    await fs.writeFile(filePath, img.buffer);
+    newUrls.push(publicPath);
+  }
+
+  const merged = [...item.imageUrls, ...newUrls];
+  const next: PortfolioItem = { ...item, imageUrls: merged };
+  store.items[idx] = next;
+  await writeStore(store);
+  return next;
+}
+
+export async function reorderPortfolioItems(orderedIds: string[]): Promise<void> {
+  if (!orderedIds.length) {
+    return;
+  }
+  const seen = new Set<string>();
+  for (const id of orderedIds) {
+    if (seen.has(id)) {
+      throw new Error("Lista de ids duplicada.");
+    }
+    seen.add(id);
+  }
+
+  if (useSupabase()) {
+    const supabase = createServerClient()!;
+    for (let i = 0; i < orderedIds.length; i++) {
+      const id = orderedIds[i]!;
+      const { error } = await supabase.from("portfolio_items").update({ sort_order: i }).eq("id", id);
+      if (error) {
+        console.error(error);
+        throw new Error("No se pudo guardar el orden.");
+      }
+    }
+    return;
+  }
+
+  assertFsPortfolioAllowed();
+  const store = await readStore();
+  const byId = new Map(store.items.map((it) => [it.id, it]));
+  if (orderedIds.some((id) => !byId.has(id))) {
+    throw new Error("Falta alguna entrada del portfolio.");
+  }
+  if (orderedIds.length !== store.items.length) {
+    throw new Error("El orden debe incluir todas las entradas.");
+  }
+  for (let i = 0; i < orderedIds.length; i++) {
+    const id = orderedIds[i]!;
+    const item = byId.get(id)!;
+    item.sortOrder = i;
+  }
+  store.items = orderedIds.map((id) => byId.get(id)!);
+  await writeStore(store);
 }
 
 export async function removePortfolioItem(id: string): Promise<boolean> {

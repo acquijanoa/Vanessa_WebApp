@@ -15,6 +15,8 @@ export type PortfolioItem = {
   description: string;
   /** Ordered image URLs; [0] is the cover on the homepage grid. */
   imageUrls: string[];
+  /** Lower values appear first when listing portfolio entries. */
+  sortOrder: number;
   createdAt: string;
 };
 

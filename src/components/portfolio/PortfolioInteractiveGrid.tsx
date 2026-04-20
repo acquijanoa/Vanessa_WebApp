@@ -98,15 +98,15 @@ function PortfolioLightbox({ item, onClose }: LightboxProps) {
           <img
             src={current}
             alt=""
-            className="max-h-[min(70vh,720px)] w-full object-contain"
+            className="pointer-events-none max-h-[min(70vh,720px)] w-full select-none object-contain"
           />
 
           {urls.length > 1 ? (
-            <>
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-between px-1 sm:px-2">
               <button
                 type="button"
                 onClick={goPrev}
-                className="absolute left-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/80 bg-background/90 text-foreground shadow backdrop-blur transition hover:bg-background"
+                className="pointer-events-auto relative z-20 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border/80 bg-background/90 text-foreground shadow backdrop-blur transition hover:bg-background"
                 aria-label="Imagen anterior"
               >
                 <span className="text-lg" aria-hidden>
@@ -116,23 +116,25 @@ function PortfolioLightbox({ item, onClose }: LightboxProps) {
               <button
                 type="button"
                 onClick={goNext}
-                className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/80 bg-background/90 text-foreground shadow backdrop-blur transition hover:bg-background"
+                className="pointer-events-auto relative z-20 ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border/80 bg-background/90 text-foreground shadow backdrop-blur transition hover:bg-background"
                 aria-label="Imagen siguiente"
               >
                 <span className="text-lg" aria-hidden>
                   ›
                 </span>
               </button>
-              <p className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-background/80 px-3 py-1 text-xs text-muted backdrop-blur">
-                {safeIndex + 1} / {urls.length}
-              </p>
-            </>
+            </div>
+          ) : null}
+          {urls.length > 1 ? (
+            <p className="pointer-events-none absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-background/80 px-3 py-1 text-xs text-muted backdrop-blur">
+              {safeIndex + 1} / {urls.length}
+            </p>
           ) : null}
 
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-background/90 text-foreground shadow backdrop-blur transition hover:bg-background"
+            className="absolute right-3 top-3 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-background/90 text-foreground shadow backdrop-blur transition hover:bg-background"
             aria-label="Cerrar"
           >
             <span className="text-xl leading-none" aria-hidden>

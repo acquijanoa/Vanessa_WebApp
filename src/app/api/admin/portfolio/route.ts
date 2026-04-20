@@ -42,6 +42,25 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  let coverIndex = 0;
+  const coverRaw = form.get("coverIndex");
+  if (coverRaw != null && coverRaw !== "") {
+    const n = Number(typeof coverRaw === "string" ? coverRaw : String(coverRaw));
+    if (!Number.isInteger(n) || n < 0 || n >= blobs.length) {
+      return NextResponse.json({ error: "Índice de portada no válido." }, { status: 400 });
+    }
+    coverIndex = n;
+  }
+
+  if (blobs.length > 0) {
+    const picked = [...blobs];
+    const [cover] = picked.splice(coverIndex, 1);
+    if (cover) {
+      blobs.length = 0;
+      blobs.push(cover, ...picked);
+    }
+  }
+
   if (blobs.length === 0) {
     return NextResponse.json({ error: "Selecciona al menos una imagen." }, { status: 400 });
   }
