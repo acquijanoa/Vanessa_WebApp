@@ -8,7 +8,9 @@ import { useCallback, useState } from "react";
 export function PortfolioAdminClient({ initialItems }: { initialItems: PortfolioItem[] }) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
-  const [category, setCategory] = useState<(typeof PORTFOLIO_CATEGORIES)[number]>("beauty");
+  const [category, setCategory] = useState<(typeof PORTFOLIO_CATEGORIES)[number]>(
+    "social_celebraciones",
+  );
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);

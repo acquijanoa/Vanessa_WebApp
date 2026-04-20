@@ -2,8 +2,8 @@ import { StatCard } from "@/components/admin/StatCard";
 import Link from "next/link";
 
 const upcoming = [
-  { title: "Editorial beauty — estudio Norte", when: "24 abr · 09:00", status: "Confirmado" },
-  { title: "Prueba de caracterización FX", when: "28 abr · 15:30", status: "Hold" },
+  { title: "Editorial moda — estudio Norte", when: "24 abr · 09:00", status: "Confirmado" },
+  { title: "Prueba de caracterización artística", when: "28 abr · 15:30", status: "Hold" },
 ];
 
 export default function AdminDashboardPage() {

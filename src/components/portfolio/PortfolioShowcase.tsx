@@ -1,16 +1,20 @@
 import type { PortfolioCategory, PortfolioItem } from "@/lib/portfolio-types";
-import { CATEGORY_LABELS } from "@/lib/portfolio-types";
+import { CATEGORY_LABELS, PORTFOLIO_CATEGORIES, isPortfolioCategory } from "@/lib/portfolio-types";
 
-const categoryOrder: PortfolioCategory[] = ["fx", "bridal", "beauty"];
+const categoryOrder: PortfolioCategory[] = [...PORTFOLIO_CATEGORIES];
 
 function groupByCategory(items: PortfolioItem[]): Record<PortfolioCategory, PortfolioItem[]> {
-  const empty: Record<PortfolioCategory, PortfolioItem[]> = {
-    fx: [],
-    bridal: [],
-    beauty: [],
-  };
+  const empty = PORTFOLIO_CATEGORIES.reduce(
+    (acc, cat) => {
+      acc[cat] = [];
+      return acc;
+    },
+    {} as Record<PortfolioCategory, PortfolioItem[]>,
+  );
+  const fallback: PortfolioCategory = "social_celebraciones";
   for (const item of items) {
-    empty[item.category].push(item);
+    const cat = isPortfolioCategory(item.category) ? item.category : fallback;
+    empty[cat].push(item);
   }
   return empty;
 }

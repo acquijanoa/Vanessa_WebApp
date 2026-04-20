@@ -1,6 +1,36 @@
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import Link from "next/link";
 
-export default function TalentApplyPage() {
+type PageProps = {
+  searchParams: Promise<{ ok?: string; error?: string }>;
+};
+
+export default async function TalentApplyPage({ searchParams }: PageProps) {
+  const sp = await searchParams;
+  const banner =
+    sp.ok === "1" ? (
+      <div className="mb-8 rounded-lg border border-emerald-800/60 bg-emerald-950/40 px-4 py-3 text-sm text-emerald-100">
+        Gracias: hemos recibido tu solicitud. Te contactaremos si encajas en un proyecto.
+      </div>
+    ) : sp.error === "validacion" ? (
+      <div className="mb-8 rounded-lg border border-amber-800/60 bg-amber-950/30 px-4 py-3 text-sm text-amber-100">
+        Revisa el formulario: el nombre completo es obligatorio.
+      </div>
+    ) : sp.error === "config" ? (
+      <div className="mb-8 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-100">
+        El envío no está disponible ahora (falta configuración del servidor). Vuelve a intentar más
+        tarde o escribe por los canales habituales del estudio.
+      </div>
+    ) : sp.error === "servidor" ? (
+      <div className="mb-8 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-100">
+        No se pudo guardar tu solicitud. Inténtalo de nuevo en unos minutos.
+      </div>
+    ) : sp.error === "form" ? (
+      <div className="mb-8 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-100">
+        El envío no se pudo procesar. Recarga la página e inténtalo otra vez.
+      </div>
+    ) : null;
+
   return (
     <>
       <SiteHeader />
@@ -10,13 +40,17 @@ export default function TalentApplyPage() {
           Envía tus medidas, digitales y notas. Un administrador revisará tu solicitud antes de
           publicar tu perfil.
         </p>
-        <form className="mt-12 space-y-8" action="#" method="post">
+
+        {banner}
+
+        <form className="mt-12 space-y-8" action="/api/talent/apply" method="post">
           <div className="grid gap-6 md:grid-cols-2">
             <label className="block text-sm">
               <span className="text-muted">Nombre completo</span>
               <input
                 name="fullName"
                 required
+                autoComplete="name"
                 className="mt-2 w-full border border-border bg-card px-3 py-2 text-foreground outline-none focus:border-accent"
               />
             </label>
@@ -25,6 +59,9 @@ export default function TalentApplyPage() {
               <input
                 name="height"
                 type="number"
+                inputMode="decimal"
+                min={0}
+                step="0.1"
                 className="mt-2 w-full border border-border bg-card px-3 py-2 text-foreground outline-none focus:border-accent"
               />
             </label>
@@ -59,7 +96,7 @@ export default function TalentApplyPage() {
             <input
               name="skills"
               className="mt-2 w-full border border-border bg-card px-3 py-2 text-foreground outline-none focus:border-accent"
-              placeholder="Ej. pasarela, beauty, FX ligero"
+              placeholder="Ej. pasarela, maquillaje social, caracterización"
             />
           </label>
           <label className="block text-sm">
@@ -78,6 +115,12 @@ export default function TalentApplyPage() {
             Enviar solicitud
           </button>
         </form>
+
+        <p className="mt-10 text-center text-xs text-muted">
+          <Link href="/" className="underline hover:text-foreground">
+            Volver al inicio
+          </Link>
+        </p>
       </main>
     </>
   );
