@@ -1,5 +1,6 @@
 import type { PortfolioItem } from "@/lib/portfolio-types";
 import { PortfolioInteractiveGrid } from "@/components/portfolio/PortfolioInteractiveGrid";
+import { PortfolioContactSection } from "@/components/portfolio/PortfolioContactSection";
 
 type Props = {
   items: PortfolioItem[];
@@ -26,6 +27,8 @@ export function PortfolioShowcase({ items }: Props) {
       ) : (
         <PortfolioInteractiveGrid items={items} />
       )}
+
+      <PortfolioContactSection />
     </section>
   );
 }
