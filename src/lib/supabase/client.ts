@@ -1,10 +1,10 @@
 import { createClient as createSupabaseClient, SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseProjectUrl, getSupabasePublicApiKey } from "@/lib/supabase/env";
 
+/** Browser/client bundle: only NEXT_PUBLIC_* is available unless you inline vars at build time. */
 export function createClient(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const url = getSupabaseProjectUrl();
+  const key = getSupabasePublicApiKey();
   if (!url || !key) {
     return null;
   }
