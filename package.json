@@ -1,5 +1,5 @@
 {
-  "name": "tmpvanessa",
+  "name": "vanessa-webapp",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,9 +9,14 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.103.3",
+    "date-fns": "^4.1.0",
+    "jose": "^6.2.2",
+    "jspdf": "^4.2.1",
     "next": "16.2.4",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

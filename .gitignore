@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 *.pem
+txt_pss.txt
 
 # debug
 npm-debug.log*
@@ -39,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Imágenes subidas desde el admin (portfolio)
+public/uploads/portfolio/*
+!public/uploads/portfolio/.gitkeep
