@@ -13,10 +13,15 @@ export type PortfolioItem = {
   category: PortfolioCategory;
   title: string;
   description: string;
-  /** Public URL path e.g. /uploads/portfolio/uuid.jpg */
-  imageUrl: string;
+  /** Ordered image URLs; [0] is the cover on the homepage grid. */
+  imageUrls: string[];
   createdAt: string;
 };
+
+/** Cover image for cards and admin thumbnails. */
+export function portfolioCoverUrl(item: PortfolioItem): string {
+  return item.imageUrls[0] ?? "";
+}
 
 export const CATEGORY_LABELS: Record<PortfolioCategory, string> = {
   social_celebraciones: "Social & Celebraciones",

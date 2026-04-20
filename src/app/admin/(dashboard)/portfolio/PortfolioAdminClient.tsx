@@ -1,7 +1,7 @@
 "use client";
 
 import type { PortfolioItem } from "@/lib/portfolio-types";
-import { CATEGORY_LABELS, PORTFOLIO_CATEGORIES } from "@/lib/portfolio-types";
+import { CATEGORY_LABELS, PORTFOLIO_CATEGORIES, portfolioCoverUrl } from "@/lib/portfolio-types";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
@@ -13,7 +13,7 @@ export function PortfolioAdminClient({ initialItems }: { initialItems: Portfolio
   );
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -30,8 +30,8 @@ export function PortfolioAdminClient({ initialItems }: { initialItems: Portfolio
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!file) {
-      setError("Selecciona una imagen.");
+    if (files.length === 0) {
+      setError("Selecciona al menos una imagen (la primera será la portada).");
       return;
     }
     setPending(true);
@@ -40,7 +40,9 @@ export function PortfolioAdminClient({ initialItems }: { initialItems: Portfolio
       fd.set("category", category);
       fd.set("title", title);
       fd.set("description", description);
-      fd.set("image", file);
+      for (const f of files) {
+        fd.append("images", f);
+      }
 
       const res = await fetch("/api/admin/portfolio", {
         method: "POST",
@@ -53,7 +55,7 @@ export function PortfolioAdminClient({ initialItems }: { initialItems: Portfolio
       }
       setTitle("");
       setDescription("");
-      setFile(null);
+      setFiles([]);
       await refresh();
     } catch {
       setError("Error de red.");
@@ -88,8 +90,8 @@ export function PortfolioAdminClient({ initialItems }: { initialItems: Portfolio
       <section className="max-w-xl rounded-xl border border-border bg-card/40 p-6">
         <h2 className="font-serif-display text-xl">Publicar trabajo</h2>
         <p className="mt-2 text-sm text-muted">
-          Sube una imagen y escribe título y descripción. Aparecerá en la página principal agrupada
-          por categoría.
+          Sube una o varias imágenes: la primera es la portada en la página principal; el resto se
+          ve en la galería al hacer clic. Título y descripción obligatorios.
         </p>
         <form className="mt-6 space-y-5" onSubmit={onSubmit}>
           <label className="block text-sm">
@@ -128,13 +130,23 @@ export function PortfolioAdminClient({ initialItems }: { initialItems: Portfolio
             />
           </label>
           <label className="block text-sm">
-            <span className="text-muted">Imagen (JPG, PNG, WebP o GIF, máx. 12 MB)</span>
+            <span className="text-muted">
+              Imágenes (JPG, PNG, WebP o GIF; máx. 12 MB cada una; hasta 12 archivos; la primera =
+              portada)
+            </span>
             <input
               type="file"
+              multiple
               accept="image/jpeg,image/png,image/webp,image/gif"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
               className="mt-2 w-full text-sm text-muted file:mr-3 file:border file:border-border file:bg-card file:px-3 file:py-1.5 file:text-foreground"
             />
+            {files.length > 0 ? (
+              <p className="mt-2 text-xs text-muted">
+                {files.length} archivo{files.length === 1 ? "" : "s"} seleccionado
+                {files.length === 1 ? "" : "s"} (orden = orden de la galería).
+              </p>
+            ) : null}
           </label>
           {error ? <p className="text-sm text-red-400">{error}</p> : null}
           <button
@@ -160,7 +172,7 @@ export function PortfolioAdminClient({ initialItems }: { initialItems: Portfolio
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={item.imageUrl}
+                  src={portfolioCoverUrl(item)}
                   alt=""
                   className="h-24 w-24 shrink-0 object-cover"
                 />

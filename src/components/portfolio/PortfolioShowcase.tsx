@@ -1,31 +1,11 @@
-import type { PortfolioCategory, PortfolioItem } from "@/lib/portfolio-types";
-import { CATEGORY_LABELS, PORTFOLIO_CATEGORIES, isPortfolioCategory } from "@/lib/portfolio-types";
-
-const categoryOrder: PortfolioCategory[] = [...PORTFOLIO_CATEGORIES];
-
-function groupByCategory(items: PortfolioItem[]): Record<PortfolioCategory, PortfolioItem[]> {
-  const empty = PORTFOLIO_CATEGORIES.reduce(
-    (acc, cat) => {
-      acc[cat] = [];
-      return acc;
-    },
-    {} as Record<PortfolioCategory, PortfolioItem[]>,
-  );
-  const fallback: PortfolioCategory = "social_celebraciones";
-  for (const item of items) {
-    const cat = isPortfolioCategory(item.category) ? item.category : fallback;
-    empty[cat].push(item);
-  }
-  return empty;
-}
+import type { PortfolioItem } from "@/lib/portfolio-types";
+import { PortfolioInteractiveGrid } from "@/components/portfolio/PortfolioInteractiveGrid";
 
 type Props = {
   items: PortfolioItem[];
 };
 
 export function PortfolioShowcase({ items }: Props) {
-  const grouped = groupByCategory(items);
-
   return (
     <section id="work" className="mx-auto max-w-6xl px-6 py-24">
       <div className="mb-16 max-w-xl">
@@ -34,7 +14,8 @@ export function PortfolioShowcase({ items }: Props) {
           Dirección de imagen con precisión artesanal
         </h2>
         <p className="mt-4 text-sm text-muted">
-          Trabajos publicados desde el panel de administración.
+          Trabajos publicados desde el panel de administración. Pulsa una tarjeta para ver la
+          galería completa.
         </p>
       </div>
 
@@ -43,47 +24,7 @@ export function PortfolioShowcase({ items }: Props) {
           Próximamente nuevos trabajos aquí.
         </p>
       ) : (
-        <div className="space-y-20">
-          {categoryOrder.map((cat) => {
-            const catItems = grouped[cat];
-            if (catItems.length === 0) {
-              return null;
-            }
-            return (
-              <div key={cat}>
-                <h3 className="font-serif-display text-2xl text-foreground md:text-3xl">
-                  {CATEGORY_LABELS[cat]}
-                </h3>
-                <div className="mt-8 grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
-                  {catItems.map((item) => (
-                    <article
-                      key={item.id}
-                      className="flex flex-col overflow-hidden border border-border bg-card/40"
-                    >
-                      <div className="relative aspect-[4/5] w-full bg-zinc-900">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={item.imageUrl}
-                          alt={item.title}
-                          className="h-full w-full object-cover"
-                          sizes="(max-width: 768px) 100vw, 33vw"
-                        />
-                      </div>
-                      <div className="flex flex-1 flex-col p-6">
-                        <h4 className="font-serif-display text-xl leading-snug">{item.title}</h4>
-                        {item.description ? (
-                          <p className="mt-3 flex-1 text-sm leading-relaxed text-muted">
-                            {item.description}
-                          </p>
-                        ) : null}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <PortfolioInteractiveGrid items={items} />
       )}
     </section>
   );
