@@ -24,6 +24,7 @@
 .DS_Store
 *.pem
 txt_pss.txt
+.env.local
 
 # debug
 npm-debug.log*
