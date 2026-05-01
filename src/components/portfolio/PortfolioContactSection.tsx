@@ -51,7 +51,8 @@ export function PortfolioContactSection() {
         Escríbeme por WhatsApp, Instagram o correo
       </h3>
       <p className="mt-4 max-w-xl text-sm text-muted">
-        Respondo consultas de proyectos, colaboraciones y disponibilidad.
+        Consultas de maquillaje, producción, locaciones, casting de modelos y disponibilidad para
+        rodajes o campañas.
       </p>
 
       <div className="mt-10 flex flex-wrap gap-4">

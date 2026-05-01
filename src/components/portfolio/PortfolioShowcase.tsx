@@ -12,11 +12,11 @@ export function PortfolioShowcase({ items }: Props) {
       <div className="mb-16 max-w-xl">
         <p className="text-sm uppercase tracking-[0.25em] text-accent">Portfolio</p>
         <h2 className="font-serif-display mt-3 text-4xl leading-tight md:text-5xl">
-          Dirección de imagen con precisión artesanal
+          Maquillaje con mirada de producción
         </h2>
         <p className="mt-4 text-sm text-muted">
-          Trabajos publicados desde el panel de administración. Pulsa una tarjeta para ver la
-          galería completa.
+          Una muestra de trabajos publicados desde el panel. Los proyectos combinan imagen final con
+          la lógica de set y cliente. Pulsa una tarjeta para la galería completa.
         </p>
       </div>
 

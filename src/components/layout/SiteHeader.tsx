@@ -1,8 +1,9 @@
 import Link from "next/link";
 
 const links = [
-  { href: "/#work", label: "Trabajos" },
-  { href: "/talent/apply", label: "Talento" },
+  { href: "/#work", label: "Portfolio" },
+  { href: "/#reel", label: "Producción" },
+  { href: "/talent/apply", label: "Modelos" },
   { href: "/client/models", label: "Área cliente" },
   { href: "/admin", label: "Admin" },
 ];

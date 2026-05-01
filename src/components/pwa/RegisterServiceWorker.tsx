@@ -7,9 +7,14 @@ export function RegisterServiceWorker() {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
       return;
     }
-    navigator.serviceWorker.register("/sw.js").catch(() => {
-      /* non-fatal in dev */
-    });
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((reg) => {
+        reg.update().catch(() => {});
+      })
+      .catch(() => {
+        /* non-fatal in dev */
+      });
   }, []);
   return null;
 }

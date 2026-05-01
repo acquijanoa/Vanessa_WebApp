@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Vanessa Quijano — Maquillaje y Producción",
     short_name: "VQ Producción",
     description:
-      "Portfolio de maquillaje y hub de producción: talento, locaciones y equipo.",
+      "Maquillaje profesional (15+ años), producción, locaciones, modelos y área privada para clientes.",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

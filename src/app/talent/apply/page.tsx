@@ -37,8 +37,8 @@ export default async function TalentApplyPage({ searchParams }: PageProps) {
       <main className="mx-auto max-w-2xl flex-1 px-6 py-16">
         <h1 className="font-serif-display text-4xl">Registro de talento</h1>
         <p className="mt-4 text-sm text-muted">
-          Envía tus medidas, digitales y notas. Un administrador revisará tu solicitud antes de
-          publicar tu perfil.
+          Formulario para proyectos de Vanessa: producción, campañas y rodajes que necesitan talento.
+          Envía medidas, digitales y notas; revisamos la solicitud antes de publicar tu perfil.
         </p>
 
         {banner}

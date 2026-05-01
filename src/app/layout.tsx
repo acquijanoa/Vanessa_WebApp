@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     template: `%s · ${siteName}`,
   },
   description:
-    "Portfolio editorial de maquillaje y sistema de producción: modelos, locaciones y equipo.",
+    "Vanessa Quijano: más de 15 años como maquilladora profesional; producción, scouting de locaciones, casting de modelos y equipo.",
   applicationName: "VQ Producción",
   appleWebApp: {
     capable: true,
