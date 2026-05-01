@@ -18,7 +18,7 @@ export default async function Home() {
             Maquillaje · Producción · Locaciones &amp; talento
           </p>
           <h1 className="font-serif-display mt-6 max-w-3xl text-5xl leading-[1.05] md:text-6xl">
-            Más de 15 años de maquillaje profesional; producción completa cuando lo necesitas.
+            Más de 15 años de maquillaje profesional para cámara, campaña y producción.
           </h1>
           <p className="mt-8 max-w-xl text-lg leading-relaxed text-muted">
             Dirección de imagen para cámara y campaña, scouting de locaciones, casting de modelos y
