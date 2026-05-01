@@ -2,7 +2,7 @@
    Do not precache "/" — HTML must always come from the network after deploy, or users
    can see a stale theme/layout from an old build. Only static, versioned assets are
    safe to precache; the app shell is not. */
-const CACHE = "vq-prod-v3";
+const CACHE = "vq-prod-v4";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
