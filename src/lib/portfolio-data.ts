@@ -2,6 +2,13 @@ import { randomUUID } from "crypto";
 import fs from "fs/promises";
 import path from "path";
 import type { PortfolioCategory, PortfolioItem } from "@/lib/portfolio-types";
+import {
+  isR2Configured,
+  publicUrlForPortfolioKey,
+  r2DeleteKeys,
+  r2PutPortfolioObject,
+  tryExtractR2KeyFromPublicUrl,
+} from "@/lib/r2";
 import { createServerClient } from "@/lib/supabase/server";
 
 const DATA_FILE = path.join(process.cwd(), "data", "portfolio-items.json");
@@ -271,6 +278,7 @@ async function addPortfolioItemSupabase(
   const supabase = createServerClient()!;
   const uploadedPaths: string[] = [];
   const sortOrder = await nextSortOrderForNewItem();
+  const useR2 = isR2Configured();
 
   const imageUrls: string[] = [];
   try {
@@ -278,27 +286,39 @@ async function addPortfolioItemSupabase(
       const img = input.images[i]!;
       const ext = mimeToExt(img.mimeType)!;
       const objectPath = `items/${id}/${i}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .upload(objectPath, img.buffer, {
-          contentType: img.mimeType,
-          upsert: false,
-        });
 
-      if (uploadError) {
-        console.error(uploadError);
-        const msg = uploadError.message?.toLowerCase() ?? "";
-        if (msg.includes("bucket") || msg.includes("not found")) {
-          throw new Error(
-            'No existe el bucket de Storage «portfolio». Ejecuta la migración 002 en Supabase (SQL Editor) o créalo en el panel.',
-          );
+      if (useR2) {
+        try {
+          await r2PutPortfolioObject(objectPath, img.buffer, img.mimeType);
+        } catch (err) {
+          console.error(err);
+          throw new Error("No se pudo subir una imagen a Cloudflare R2.");
         }
-        throw new Error("No se pudo subir una imagen a Supabase Storage.");
-      }
+        uploadedPaths.push(objectPath);
+        imageUrls.push(publicUrlForPortfolioKey(objectPath));
+      } else {
+        const { error: uploadError } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .upload(objectPath, img.buffer, {
+            contentType: img.mimeType,
+            upsert: false,
+          });
 
-      uploadedPaths.push(objectPath);
-      const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(objectPath);
-      imageUrls.push(pub.publicUrl);
+        if (uploadError) {
+          console.error(uploadError);
+          const msg = uploadError.message?.toLowerCase() ?? "";
+          if (msg.includes("bucket") || msg.includes("not found")) {
+            throw new Error(
+              'No existe el bucket de Storage «portfolio». Ejecuta la migración 002 en Supabase (SQL Editor) o créalo en el panel.',
+            );
+          }
+          throw new Error("No se pudo subir una imagen a Supabase Storage.");
+        }
+
+        uploadedPaths.push(objectPath);
+        const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(objectPath);
+        imageUrls.push(pub.publicUrl);
+      }
     }
 
     const { data: inserted, error: insertError } = await supabase
@@ -319,7 +339,13 @@ async function addPortfolioItemSupabase(
 
     if (insertError || !inserted) {
       console.error(insertError);
-      await supabase.storage.from(STORAGE_BUCKET).remove(uploadedPaths).catch(() => {});
+      if (uploadedPaths.length) {
+        if (useR2) {
+          await r2DeleteKeys(uploadedPaths).catch(() => {});
+        } else {
+          await supabase.storage.from(STORAGE_BUCKET).remove(uploadedPaths).catch(() => {});
+        }
+      }
       const code = insertError?.code ?? "";
       const hint = insertError?.hint ?? "";
       const combined = `${insertError?.message ?? ""} ${hint}`;
@@ -356,7 +382,11 @@ async function addPortfolioItemSupabase(
     };
   } catch (e) {
     if (uploadedPaths.length) {
-      await supabase.storage.from(STORAGE_BUCKET).remove(uploadedPaths).catch(() => {});
+      if (useR2) {
+        await r2DeleteKeys(uploadedPaths).catch(() => {});
+      } else {
+        await supabase.storage.from(STORAGE_BUCKET).remove(uploadedPaths).catch(() => {});
+      }
     }
     throw e;
   }
@@ -370,16 +400,22 @@ async function deleteFsPortfolioFiles(urls: string[]): Promise<void> {
   }
 }
 
-async function deleteSupabaseStorageFiles(urls: string[]): Promise<void> {
+async function deleteRemotePortfolioFiles(urls: string[]): Promise<void> {
   if (!urls.length) {
     return;
   }
-  const supabase = createServerClient()!;
-  const paths = urls
+  const supabasePaths = urls
     .map((u) => extractStorageObjectPath(u))
     .filter((p): p is string => p != null && p.length > 0);
-  if (paths.length) {
-    await supabase.storage.from(STORAGE_BUCKET).remove(paths).catch(() => {});
+  if (supabasePaths.length && useSupabase()) {
+    const supabase = createServerClient()!;
+    await supabase.storage.from(STORAGE_BUCKET).remove(supabasePaths).catch(() => {});
+  }
+  const r2Keys = urls
+    .map((u) => tryExtractR2KeyFromPublicUrl(u))
+    .filter((k): k is string => k != null && k.length > 0);
+  if (r2Keys.length && isR2Configured()) {
+    await r2DeleteKeys(r2Keys).catch(() => {});
   }
 }
 
@@ -423,7 +459,7 @@ export async function updatePortfolioItem(
       const removed = prevUrls.filter((u) => !input.imageUrls!.includes(u));
       nextUrls = [...input.imageUrls];
       if (removed.length) {
-        await deleteSupabaseStorageFiles(removed);
+        await deleteRemotePortfolioFiles(removed);
       }
       if (nextUrls.length === 0) {
         throw new Error("Debe quedar al menos una imagen.");
@@ -554,23 +590,35 @@ export async function appendPortfolioItemImages(
 
     const uploadedPaths: string[] = [];
     const newUrls: string[] = [];
+    const useR2 = isR2Configured();
     try {
       for (const img of images) {
         const ext = mimeToExt(img.mimeType)!;
         const objectPath = `items/${id}/${randomUUID()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from(STORAGE_BUCKET)
-          .upload(objectPath, img.buffer, {
-            contentType: img.mimeType,
-            upsert: false,
-          });
-        if (uploadError) {
-          console.error(uploadError);
-          throw new Error("No se pudo subir una imagen.");
+        if (useR2) {
+          try {
+            await r2PutPortfolioObject(objectPath, img.buffer, img.mimeType);
+          } catch (err) {
+            console.error(err);
+            throw new Error("No se pudo subir una imagen.");
+          }
+          uploadedPaths.push(objectPath);
+          newUrls.push(publicUrlForPortfolioKey(objectPath));
+        } else {
+          const { error: uploadError } = await supabase.storage
+            .from(STORAGE_BUCKET)
+            .upload(objectPath, img.buffer, {
+              contentType: img.mimeType,
+              upsert: false,
+            });
+          if (uploadError) {
+            console.error(uploadError);
+            throw new Error("No se pudo subir una imagen.");
+          }
+          uploadedPaths.push(objectPath);
+          const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(objectPath);
+          newUrls.push(pub.publicUrl);
         }
-        uploadedPaths.push(objectPath);
-        const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(objectPath);
-        newUrls.push(pub.publicUrl);
       }
 
       const merged = [...prevUrls, ...newUrls];
@@ -585,14 +633,24 @@ export async function appendPortfolioItemImages(
         .maybeSingle();
 
       if (upError || !updated) {
-        await supabase.storage.from(STORAGE_BUCKET).remove(uploadedPaths).catch(() => {});
+        if (uploadedPaths.length) {
+          if (useR2) {
+            await r2DeleteKeys(uploadedPaths).catch(() => {});
+          } else {
+            await supabase.storage.from(STORAGE_BUCKET).remove(uploadedPaths).catch(() => {});
+          }
+        }
         console.error(upError);
         throw new Error("No se pudo guardar las imágenes.");
       }
       return mapRowToItem(updated as PortfolioRow);
     } catch (e) {
       if (uploadedPaths.length) {
-        await supabase.storage.from(STORAGE_BUCKET).remove(uploadedPaths).catch(() => {});
+        if (useR2) {
+          await r2DeleteKeys(uploadedPaths).catch(() => {});
+        } else {
+          await supabase.storage.from(STORAGE_BUCKET).remove(uploadedPaths).catch(() => {});
+        }
       }
       throw e;
     }
@@ -690,19 +748,13 @@ export async function removePortfolioItem(id: string): Promise<boolean> {
           ? [row.media_url]
           : [];
 
-    const paths = urls
-      .map((u: string) => extractStorageObjectPath(u))
-      .filter((p: string | null): p is string => p != null && p.length > 0);
-
     const { error: deleteError } = await supabase.from("portfolio_items").delete().eq("id", id);
     if (deleteError) {
       console.error(deleteError);
       return false;
     }
 
-    if (paths.length) {
-      await supabase.storage.from(STORAGE_BUCKET).remove(paths).catch(() => {});
-    }
+    await deleteRemotePortfolioFiles(urls);
     return true;
   }
 

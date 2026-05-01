@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1041.0",
     "@supabase/supabase-js": "^2.103.3",
     "date-fns": "^4.1.0",
     "jose": "^6.2.2",
