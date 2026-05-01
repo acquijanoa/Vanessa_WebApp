@@ -85,7 +85,7 @@ function PortfolioLightbox({ item, onClose }: LightboxProps) {
     >
       <button
         type="button"
-        className="absolute inset-0 bg-stone-950/55 backdrop-blur-md"
+        className="absolute inset-0 bg-stone-100/85 backdrop-blur-md"
         onClick={onClose}
         aria-label="Cerrar galería"
       />

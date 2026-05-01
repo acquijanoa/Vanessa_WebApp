@@ -1,5 +1,5 @@
 /* Minimal PWA service worker — cache shell for offline resilience. */
-const CACHE = "vq-prod-v1";
+const CACHE = "vq-prod-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -9,7 +9,14 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))),
+      )
+      .then(() => self.clients.claim()),
+  );
 });
 
 self.addEventListener("fetch", (event) => {
