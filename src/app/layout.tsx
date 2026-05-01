@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   applicationName: "VQ Producción",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "VQ Producción",
   },
   formatDetection: {
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0a",
+  themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -52,7 +52,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`dark ${dmSans.variable} ${cormorant.variable} h-full scroll-smooth antialiased`}
+      className={`${dmSans.variable} ${cormorant.variable} h-full scroll-smooth antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <RegisterServiceWorker />

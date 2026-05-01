@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
       "Portfolio de maquillaje y hub de producción: talento, locaciones y equipo.",
     start_url: "/",
     display: "standalone",
-    background_color: "#0a0a0a",
-    theme_color: "#0a0a0a",
+    background_color: "#ffffff",
+    theme_color: "#ffffff",
     orientation: "portrait-primary",
     icons: [
       {

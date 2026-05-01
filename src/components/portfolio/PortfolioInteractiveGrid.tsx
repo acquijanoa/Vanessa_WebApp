@@ -85,7 +85,7 @@ function PortfolioLightbox({ item, onClose }: LightboxProps) {
     >
       <button
         type="button"
-        className="absolute inset-0 bg-background/75 backdrop-blur-md"
+        className="absolute inset-0 bg-stone-950/55 backdrop-blur-md"
         onClick={onClose}
         aria-label="Cerrar galería"
       />
@@ -93,7 +93,7 @@ function PortfolioLightbox({ item, onClose }: LightboxProps) {
         className="relative z-10 flex max-h-[min(92vh,900px)] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative flex min-h-0 flex-1 items-center justify-center bg-zinc-950/90">
+        <div className="relative flex min-h-0 flex-1 items-center justify-center bg-stone-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={current}
@@ -186,7 +186,7 @@ export function PortfolioInteractiveGrid({ items }: Props) {
                     onClick={() => setOpenId(item.id)}
                     className="group flex flex-col overflow-hidden border border-border bg-card/40 text-left transition hover:border-accent/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
-                    <div className="relative aspect-[4/5] w-full bg-zinc-900">
+                    <div className="relative aspect-[4/5] w-full bg-stone-200">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={portfolioCoverUrl(item)}

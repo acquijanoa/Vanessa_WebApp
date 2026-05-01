@@ -1,6 +1,6 @@
 export function VideoReelPlaceholder() {
   return (
-    <section className="border-y border-border bg-card/30">
+    <section className="border-y border-border bg-stone-50/80">
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-20 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-sm uppercase tracking-[0.25em] text-accent">Motion</p>
@@ -10,7 +10,7 @@ export function VideoReelPlaceholder() {
             reproductor (Mux, Vimeo o archivo propio).
           </p>
         </div>
-        <div className="aspect-[9/16] w-full max-w-[220px] rounded-lg border border-border bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl">
+        <div className="aspect-[9/16] w-full max-w-[220px] rounded-lg border border-border bg-gradient-to-b from-stone-200 to-stone-300 shadow-lg shadow-stone-900/5">
           <div className="flex h-full items-center justify-center text-xs text-muted">
             9:16
           </div>

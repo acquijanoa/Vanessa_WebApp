@@ -200,7 +200,7 @@ function PortfolioEntryEditor({
           {urls.map((u, i) => (
             <li
               key={`${u}-${i}`}
-              className="relative flex w-[88px] flex-col gap-1 border border-border bg-zinc-950/40 p-1"
+              className="relative flex w-[88px] flex-col gap-1 border border-border bg-card/80 p-1"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={u} alt="" className="aspect-[4/5] w-full object-cover" />
