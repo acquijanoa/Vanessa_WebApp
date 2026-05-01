@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { ADMIN_SESSION_COOKIE, getAdminJwtSecretBytes } from "@/lib/admin-session";
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (!pathname.startsWith("/admin")) {
